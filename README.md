@@ -1,1 +1,2 @@
-# Capstone 00
+# log-pipeline
+Gerador e parser de olgs sintéticos.
