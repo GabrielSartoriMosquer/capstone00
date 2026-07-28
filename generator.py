@@ -1,6 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import random
+import sys
+from pathlib import Path
 
 IPS = [f'192.168.{random.randint(1,255)}.{random.randint(1,255)}' for _ in range(30)]
 IP_WEIGHTS = [10] * 3 + [2] * 27
@@ -19,7 +21,7 @@ STATUS_WEIGHTS = [10, 2.5, 1]
 
 CORRUPTED_SYMBOLS = ['#$', r'%%', '&&*', '@#¨%']
 
-def generate_line(timestamp: datetime) -> str:
+def generate_fields(timestamp: datetime) -> list:
     
     ip = random.choices(IPS, IP_WEIGHTS)[0]
 
@@ -37,21 +39,44 @@ def generate_line(timestamp: datetime) -> str:
     size = random.randint(1, 4096)
 
     date = timestamp.strftime('%d/%b/%Y:%H:%M:%S %z')
+    fields = [ip, date, api_call, status, size]
 
-    return f'{ip} - - [{date}] "{api_call}" {status} {size}'
+    return fields 
+
+
+def corrupt_fields(fields:list) -> list:
+
+    n_fields = random.choices([1,2,3,4,5], [40,30,20,10,5])[0]
+    indexes = random.sample(range(len(fields)), k=(n_fields))
+    
+    for idx in indexes:
+        fields[idx] = random.choice(CORRUPTED_SYMBOLS)
+
+    return fields
+
+
+def format_line(fields) -> str:
+        
+        return f'{fields[0]} - - [{fields[1]}] "{fields[2]}" {fields[3]} {fields[4]}'
+
 
 def generate_log(n: int, path: str, corrupted_rate: float = 0.02) -> None:
-    date_time = datetime.now(ZoneInfo("America/Sao_Paulo"))
-    with open(path, 'w'):
-        for _ in range(n):
-            line = generate_line(date_time)
-            corrupted = random.choices([0, 1], [83, 17])[0]
-            match corrupted:
-                case 0:
-                    continue
-                case 1:
-                    for _ in range(random.randint(1,5)):
-                        line[random.randint(0,(len(line)-1))] = random.choice(CORRUPTED_SYMBOLS)
 
-for _ in range(30):
-    print(generate_line(datetime.now(ZoneInfo("America/Sao_Paulo"))))
+    clock = datetime.now(ZoneInfo("America/Sao_Paulo"))
+
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+    with open(path, 'w') as log:
+        for _ in range(n):
+            fields = generate_fields(clock)
+
+            if random.random() < corrupted_rate:
+                fields = corrupt_fields(fields)
+
+            log.write(f'{format_line(fields)}\n')
+            clock += timedelta(seconds=(random.randint(0,5)))
+
+if __name__ == '__main__':
+    n = int(sys.argv[1]) if len(sys.argv) > 1 else 10000
+    
+    generate_log(n, 'logs/log.txt')
