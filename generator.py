@@ -17,6 +17,8 @@ PROTOCOL_WEIGHTS = [80, 18, 2]
 STATUS = [200, 404, 500]
 STATUS_WEIGHTS = [10, 2.5, 1]
 
+CORRUPTED_SYMBOLS = ['#$', r'%%', '&&*', '@#¨%']
+
 def generate_line(timestamp: datetime) -> str:
     
     ip = random.choices(IPS, IP_WEIGHTS)[0]
@@ -39,7 +41,17 @@ def generate_line(timestamp: datetime) -> str:
     return f'{ip} - - [{date}] "{api_call}" {status} {size}'
 
 def generate_log(n: int, path: str, corrupted_rate: float = 0.02) -> None:
-    pass
+    date_time = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    with open(path, 'w'):
+        for _ in range(n):
+            line = generate_line(date_time)
+            corrupted = random.choices([0, 1], [83, 17])[0]
+            match corrupted:
+                case 0:
+                    continue
+                case 1:
+                    for _ in range(random.randint(1,5)):
+                        line[random.randint(0,(len(line)-1))] = random.choice(CORRUPTED_SYMBOLS)
 
 for _ in range(30):
-    print(generate_line(datetime.now(ZoneInfo("America/Sao_Paulo")))) 
+    print(generate_line(datetime.now(ZoneInfo("America/Sao_Paulo"))))
