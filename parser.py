@@ -1,18 +1,23 @@
 from datetime import datetime
 import sqlite3
+import re
 
 def log_fields_separator(log: str) -> dict:
-    '''
-    separation of the log fields in a dict
-    '''
-    pass
+
+    regex = r'^(?P<ip>\S+)\s+(?P<ident>\S+)\s+(?P<user>\S+)\s+\[(?P<datetime>[^\]]+)\]\s+"(?P<request>[^"]+)"\s+(?P<status>\d+)\s+(?P<bytes>\d+|-)$'
+
+    match = re.match(regex, log)
+
+    if match:
+        # Returns a dict with the group names as keys
+        fields = match.groupdict()
+        return fields
 
 
 def fields_converter(fields: dict) -> dict:
-    '''
-    converts and validates each field to the corret datatype
-    '''
-    pass
+    ip_parts = fields['ip'].split('.')
+    if (len(ip_parts)) == 4 and (p for p in ip_parts if p<255 and p>0):
+        if 
 
 class LogEntry:
     '''
@@ -32,3 +37,6 @@ def parser_orchestrator():
     '''
     all the workflow comes here
     '''
+    
+
+log_fields_separator('192.168.115.158 - - [04/Aug/2026:14:45:30 -0300] "GET /health HTTP/1.1" 200 1692')
