@@ -71,6 +71,22 @@ def parse_bytes(bytes):
     except ValueError as e:
         raise InvalidField(f'BYTES: {e}')
 
+function_dict = {
+    'ip': parse_ip,
+    'size': parse_bytes,
+    'date': parse_date,
+    'request': parse_request,
+    'status': parse_status
+}
+
+def try_except_parse(log_dict, function_dict, field) -> dict:
+    try:
+        field = function_dict[f'{field}'](log_dict[f'{field}'])
+    except (ValueError, InvalidField) as e:
+        if not log_dict['errors']:
+            log_dict['errors'] = []
+        log_dict['errors'].append(e) 
+
 class LogEntry:
 
     def __init__(self, id:int, ip:str, date:datetime, method:str, route:str, protocol:str, status:int, size:int):
