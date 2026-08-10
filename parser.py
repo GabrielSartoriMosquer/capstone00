@@ -8,9 +8,9 @@ DATE_FORMAT = '%d/%b/%Y:%H:%M:%S %z'
 class InvalidField(Exception):
     pass
             
-def log_fields_separator(log: str) -> dict:
+def log_fields_separator(id, log: str) -> dict:
 
-    regex = r'^(?P<ip>\S+)\s+(?P<ident>\S+)\s+(?P<user>\S+)\s+\[(?P<datetime>[^\]]+)\]\s+"(?P<request>[^"]+)"\s+(?P<status>\S+)\s+(?P<bytes>\S+|-)$'
+    regex = r'^(?P<ip>\S+)\s+(?P<ident>\S+)\s+(?P<user>\S+)\s+\[(?P<date>[^\]]+)\]\s+"(?P<request>[^"]+)"\s+(?P<status>\S+)\s+(?P<size>\S+|-)$'
 
     match = re.match(regex, log)
 
@@ -41,14 +41,11 @@ def parse_date(date, format):
 def parse_request(request):
     parts = request.split()
     if len(parts) == 3:
-        print(1)
         if parts[0] in API_METHODS:
-            print(2)
             if re.match(r'^(?:/[a-zA-Z0-9]+)+$', parts[1]): # ?: para que o regex apenas valide e não guarde na memória
-                print(3)
                 if re.match(r'^HTTP/\d+(?:\.\d+)?$', parts[2]): 
-                    method, path, protocol = parts[0], parts[1], parts[2]
-                    return  method, path, protocol
+                    method, route, protocol = parts[0], parts[1], parts[2]
+                    return  method, route, protocol
     raise InvalidField('REQUEST: the request is wrong.')
 
 def parse_status(status):
@@ -61,31 +58,56 @@ def parse_status(status):
     except ValueError as e:
         raise InvalidField(f'STATUS: {e}')
 
-def parse_bytes(bytes):
+def parse_size(size):
     try:
-        bytes = int(bytes)
-        if bytes < 0:
-            raise InvalidField('BYTES: Number of bytes below zero.')
+        size = int(size)
+        if size < 0:
+            raise InvalidField('size: Number of size below zero.')
         else:
-            return bytes
+            return size
     except ValueError as e:
-        raise InvalidField(f'BYTES: {e}')
+        raise InvalidField(f'SIZE: {e}')
 
-function_dict = {
-    'ip': parse_ip,
-    'size': parse_bytes,
-    'date': parse_date,
-    'request': parse_request,
-    'status': parse_status
-}
+def try_except_parse(log_dict):
+    errors = []
 
-def try_except_parse(log_dict, function_dict, field) -> dict:
+    # IP
     try:
-        field = function_dict[f'{field}'](log_dict[f'{field}'])
-    except (ValueError, InvalidField) as e:
-        if not log_dict['errors']:
-            log_dict['errors'] = []
-        log_dict['errors'].append(e) 
+        ip = parse_ip(log_dict['ip'])
+    except InvalidField as e:
+        errors.append(str(e)) 
+    
+    # DATE
+    try:
+        date = parse_date(log_dict['date'], DATE_FORMAT)
+    except InvalidField as e:
+        errors.append(str(e)) 
+
+    # REQUEST
+    try:
+        method, route, protocol = parse_request(log_dict['request'])
+    except InvalidField as e:
+        errors.append(str(e)) 
+
+    # STATUS
+    try:
+        status = parse_status(log_dict['status'])
+    except InvalidField as e:
+        errors.append(str(e)) 
+
+    # SIZE
+    try:
+        size = parse_size(log_dict['size'])
+    except InvalidField as e:
+        errors.append(str(e)) 
+
+    # OBJECT
+    if not errors:
+        log = LogEntry(id, ip, date, method, route, protocol, status, size)
+        id+=1
+        return log, None
+    else:
+        return None, errors
 
 class LogEntry:
 
