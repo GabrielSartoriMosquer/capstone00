@@ -3,6 +3,7 @@ import sqlite3
 import re
 
 API_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+DATE_FORMAT = '%d/%b/%Y:%H:%M:%S %z'
 
 class InvalidField(Exception):
     pass
@@ -30,9 +31,12 @@ def parse_ip(ip):
     else:
         raise InvalidField(f'IP: {ip} has not 4 parts.')
                 
-def parse_date(date):
-    date = date.strptime('%d/%b/%Y:%H:%M:%S %z')
-    return date
+def parse_date(date, format):
+    try:
+        date = datetime.strptime(date, format)
+        return date
+    except ValueError as e:
+        raise InvalidField(f'DATE: {e}')
 
 def parse_request(request):
     parts = request.split()
@@ -40,14 +44,16 @@ def parse_request(request):
         print(1)
         if parts[0] in API_METHODS:
             print(2)
-            if re.match(r'^/[a-zA-Z0-9]+$', parts[1]):
+            if re.match(r'^(?:/[a-zA-Z0-9]+)+$', parts[1]): # ?: para que o regex apenas valide e não guarde na memória
                 print(3)
-                if re.match(r'^HTTP/\d+(?:\.\d+)?$', parts[2]):
-                    return parts[0], parts[1], parts[2]
+                if re.match(r'^HTTP/\d+(?:\.\d+)?$', parts[2]): 
+                    method, path, protocol = parts[0], parts[1], parts[2]
+                    return  method, path, protocol
     raise InvalidField('REQUEST: the request is wrong.')
 
 def parse_status(status):
     try:
+        status = str(status).strip()
         if len(str(status))==3 and 100<=int(status)<=599:
             return int(status)
         else:
@@ -78,9 +84,5 @@ class LogEntry:
         self.size = size
 
 def parser_orchestrator():
-    '''
-    all the workflow comes here
-    '''
-    
-
-log_fields_separator('192.168.115.158 - - [04/Aug/2026:14:45:30 -0300] "GET /health HTTP/1.1" 200 1692')
+    pass
+    # all the workflow comes here
