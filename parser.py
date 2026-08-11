@@ -1,7 +1,5 @@
 from datetime import datetime
 import re
-import sqlite3
-from pathlib import Path
 import pandas as pd
 from dataclasses import dataclass
 
@@ -136,7 +134,7 @@ def parser_orchestrator(log_path):
                         errors.append(error)
                     if log:
                         logs.append(log)
-                else: continue
+
     df_logs = pd.concat([df_logs, pd.DataFrame(logs)], ignore_index=True)
     df_logs.to_csv('logs.csv')
 
