@@ -1,14 +1,19 @@
 from datetime import datetime
-import sqlite3
 import re
+import sqlite3
+from pathlib import Path
+import pandas as pd
+import openpyxl
+from dataclasses import dataclass
 
 API_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 DATE_FORMAT = '%d/%b/%Y:%H:%M:%S %z'
+PATH = 'logs/log.txt'
 
 class InvalidField(Exception):
     pass
             
-def log_fields_separator(id, log: str) -> dict:
+def log_fields_separator(log: str) -> dict:
 
     regex = r'^(?P<ip>\S+)\s+(?P<ident>\S+)\s+(?P<user>\S+)\s+\[(?P<date>[^\]]+)\]\s+"(?P<request>[^"]+)"\s+(?P<status>\S+)\s+(?P<size>\S+|-)$'
 
@@ -68,7 +73,7 @@ def parse_size(size):
     except ValueError as e:
         raise InvalidField(f'SIZE: {e}')
 
-def try_except_parse(log_dict):
+def try_except_parse(id, log_dict):
     errors = []
 
     # IP
@@ -109,18 +114,32 @@ def try_except_parse(log_dict):
     else:
         return None, errors
 
+@dataclass 
 class LogEntry:
+    id: int
+    ip: str
+    date : datetime
+    method : str
+    route : str
+    protocol : str
+    status : int
+    size : int
 
-    def __init__(self, id:int, ip:str, date:datetime, method:str, route:str, protocol:str, status:int, size:int):
-        self.id = id
-        self.ip = ip
-        self.date = date
-        self.method = method
-        self.route = route
-        self.protocol = protocol
-        self.status = status
-        self.size = size
+def parser_orchestrator(log_path):
+    df_logs = pd.DataFrame(columns=(['id', 'ip', 'date', 'method', 'route', 'protocol', 'status', 'size']))
+    logs = []
+    errors = []
+    with open(log_path, 'r', encoding='utf-8') as f:
+        for id, line in enumerate(f):
+                log_dict = log_fields_separator(f'{line}')
+                log, error = try_except_parse(id, log_dict)
+                if error:
+                    errors.append(error)
+                if log:
+                    logs.append(log)
+    df_logs = pd.concat([df_logs, pd.DataFrame(logs)], ignore_index=True)
+    df_logs.to_csv('logs.csv')
 
-def parser_orchestrator():
-    pass
-    # all the workflow comes here
+    df_errors = pd.DataFrame(errors)
+    df_errors.to_csv('errors.csv')
+parser_orchestrator('logs/log.txt')
