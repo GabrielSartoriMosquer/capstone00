@@ -71,44 +71,44 @@ def parse_size(size):
         raise InvalidField(f'SIZE: {e}')
 
 def try_except_parse(id, log_dict):
-    errors = []
+    error = []
 
     # IP
     try:
         ip = parse_ip(log_dict['ip'])
     except InvalidField as e:
-        errors.append(f'{id} - {str(e)}') 
+        error.append(f'{str(e)}') 
     
     # DATE
     try:
         date = parse_date(log_dict['date'], DATE_FORMAT)
     except InvalidField as e:
-        errors.append(f'{id} - {str(e)}') 
+        error.append(f'{str(e)}') 
 
     # REQUEST
     try:
         method, route, protocol = parse_request(log_dict['request'])
     except InvalidField as e:
-        errors.append(f'{id} - {str(e)}') 
+        error.append(f'{str(e)}') 
 
     # STATUS
     try:
         status = parse_status(log_dict['status'])
     except InvalidField as e:
-        errors.append(f'{id} - {str(e)}') 
+        error.append(f'{str(e)}') 
 
     # SIZE
     try:
         size = parse_size(log_dict['size'])
     except InvalidField as e:
-        errors.append(f'{id} - {str(e)}') 
+        error.append(f'{str(e)}') 
 
     # OBJECT
-    if not errors:
+    if not error:
         log = LogEntry(id, ip, date, method, route, protocol, status, size)
         return log, None
     else:
-        return None, errors
+        return None, error
 
 @dataclass 
 class LogEntry:
@@ -124,23 +124,24 @@ class LogEntry:
 def parser_orchestrator(log_path):
     df_logs = pd.DataFrame(columns=(['id', 'ip', 'date', 'method', 'route', 'protocol', 'status', 'size']))
     logs = []
-    errors = []
+    errors = {}
     with open(log_path, 'r', encoding='utf-8') as f:
         for id, line in enumerate(f, start=1):
                 log_dict = log_fields_separator(f'{line}')
                 if log_dict:
                     log, error = try_except_parse(id, log_dict)
                     if error:
-                        errors.append(error)
+                        if not id in errors.keys():
+                            errors[id] = []
+                        errors[id].append(error)
                     if log:
                         logs.append(log)
 
     df_logs = pd.concat([df_logs, pd.DataFrame(logs)], ignore_index=True)
-    df_logs.to_csv('logs.csv')
+    df_logs.to_csv('tables/logs.csv')
 
-    df_errors = pd.DataFrame(errors)
-    df_errors.to_csv('errors.csv')
-
+    df_errors = pd.DataFrame.from_dict(errors, orient='index')
+    df_errors.to_csv('tables/errors.csv')
 
 if __name__ == '__main__':
     parser_orchestrator(PATH)
